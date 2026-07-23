@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
-<title>Ledger — Workout Tracker</title>
+<title>PABLO — Workout Tracker</title>
 
 <meta name="theme-color" content="#0C0E12" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="Ledger" />
+<meta name="apple-mobile-web-app-title" content="PABLO" />
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -85,7 +85,7 @@
     <div class="max-w-xl mx-auto px-4 h-14 flex items-center justify-between">
       <div class="flex items-center gap-2">
         <div class="num text-amber font-bold text-lg leading-none tracking-tight">≡</div>
-        <h1 class="font-disp font-700 text-lg tracking-tight" style="font-weight:700">Ledger</h1>
+        <h1 class="font-disp font-700 text-lg tracking-tight" style="font-weight:700">PABLO</h1>
       </div>
       <div id="headerRight" class="text-xs text-mut num"></div>
     </div>
@@ -126,7 +126,7 @@
 
 <script>
 /* =========================================================================
-   Ledger — local-first workout tracker
+   PABLO — local-first workout tracker
    All data lives in this device's LocalStorage. Nothing leaves the phone.
    ========================================================================= */
 
@@ -157,6 +157,19 @@ function migrate(data) {
   (data.exercises || []).forEach(e => {
     if (typeof e.sets !== 'number' || e.sets < 1) e.sets = DEFAULT_SETS;
   });
+  // v2: ordering moved onto the workout. Build each workout's ordered exerciseIds
+  // from the old exercise.workoutIds links (preserving previous global order), once.
+  (data.workouts || []).forEach(w => {
+    if (!Array.isArray(w.exerciseIds)) {
+      w.exerciseIds = (data.exercises || [])
+        .filter(e => Array.isArray(e.workoutIds) && e.workoutIds.includes(w.id))
+        .map(e => e.id);
+    } else {
+      // drop any dangling ids pointing at deleted exercises
+      w.exerciseIds = w.exerciseIds.filter(id => (data.exercises || []).some(e => e.id === id));
+    }
+  });
+  (data.exercises || []).forEach(e => { delete e.workoutIds; });
   return data;
 }
 function save() { localStorage.setItem(DB_KEY, JSON.stringify(state)); }
@@ -172,18 +185,19 @@ function saveActive() {
 
 function seed() {
   const wA = uid(), wB = uid();
+  const squat = uid(), bench = uid(), row = uid(), dead = uid(), ohp = uid(), pull = uid();
   return {
     workouts: [
-      { id: wA, name: 'Workout A' },
-      { id: wB, name: 'Workout B' },
+      { id: wA, name: 'Workout A', exerciseIds: [squat, bench, row] },
+      { id: wB, name: 'Workout B', exerciseIds: [dead, ohp, pull] },
     ],
     exercises: [
-      { id: uid(), name: 'Squat',        description: 'Brace core, sit back, knees track over toes. Depth: hip crease below knee.', workoutIds: [wA], sets: 3 },
-      { id: uid(), name: 'Bench Press',   description: 'Shoulder blades retracted, slight arch, bar to lower chest. Controlled eccentric.', workoutIds: [wA], sets: 3 },
-      { id: uid(), name: 'Barbell Row',   description: 'Hinge ~45°, pull to lower ribs, squeeze scapulae. No jerking.', workoutIds: [wA], sets: 3 },
-      { id: uid(), name: 'Deadlift',      description: 'Neutral spine, bar over midfoot, push floor away. One hard set.', workoutIds: [wB], sets: 1 },
-      { id: uid(), name: 'Overhead Press',description: 'Elbows slightly forward, glutes tight, press through the bar. No layback.', workoutIds: [wB], sets: 3 },
-      { id: uid(), name: 'Pull-up',       description: 'Full hang to chin over bar. Add weight via belt when reps get easy.', workoutIds: [wB], sets: 3 },
+      { id: squat, name: 'Squat',         description: 'Brace core, sit back, knees track over toes. Depth: hip crease below knee.', sets: 3 },
+      { id: bench, name: 'Bench Press',    description: 'Shoulder blades retracted, slight arch, bar to lower chest. Controlled eccentric.', sets: 3 },
+      { id: row,   name: 'Barbell Row',    description: 'Hinge ~45°, pull to lower ribs, squeeze scapulae. No jerking.', sets: 3 },
+      { id: dead,  name: 'Deadlift',       description: 'Neutral spine, bar over midfoot, push floor away. One hard set.', sets: 1 },
+      { id: ohp,   name: 'Overhead Press', description: 'Elbows slightly forward, glutes tight, press through the bar. No layback.', sets: 3 },
+      { id: pull,  name: 'Pull-up',        description: 'Full hang to chin over bar. Add weight via belt when reps get easy.', sets: 3 },
     ],
     sessions: [],
   };
@@ -192,7 +206,13 @@ function seed() {
 /* ---------- data helpers ---------- */
 const workoutById  = id => state.workouts.find(w => w.id === id);
 const exerciseById = id => state.exercises.find(e => e.id === id);
-const exercisesForWorkout = id => state.exercises.filter(e => e.workoutIds.includes(id));
+// Ordered: follows the workout's own exerciseIds list.
+const exercisesForWorkout = id => {
+  const w = workoutById(id);
+  return w && w.exerciseIds ? w.exerciseIds.map(exId => exerciseById(exId)).filter(Boolean) : [];
+};
+// Which workouts contain this exercise (for Plan tags).
+const workoutsForExercise = exId => state.workouts.filter(w => (w.exerciseIds || []).includes(exId));
 
 function sessionsForWorkout(id) {
   return state.sessions
@@ -381,7 +401,7 @@ function renderManage(view) {
   } else {
     html += '<div class="space-y-2">';
     for (const e of state.exercises) {
-      const tags = e.workoutIds.map(id => workoutById(id)).filter(Boolean);
+      const tags = workoutsForExercise(e.id);
       const flaggedLast = lastFlagFor(e.id);
       html += `
         <button data-act="editexercise" data-id="${e.id}" class="w-full text-left bg-panel border border-line rounded-2xl p-4 active:border-mut/60 transition">
@@ -471,24 +491,35 @@ function setRowHTML(ei, si, set, prev) {
   const beat = isBeat(set, prev);
   const pw = (prev && prev.weight != null && prev.weight !== '') ? prev.weight : 0;
   const pr = (prev && prev.reps   != null && prev.reps   !== '') ? prev.reps   : 0;
+  const stepBtn = (field, delta, sym) =>
+    `<button data-act="step" data-ei="${ei}" data-si="${si}" data-field="${field}" data-delta="${delta}"
+             class="w-8 h-7 rounded-md bg-ink/50 border border-line text-mut active:text-amber active:border-amber/60 text-base leading-none flex items-center justify-center shrink-0">${sym}</button>`;
   return `
     <div class="relative flex items-center gap-2 bg-panel2 rounded-lg pl-3 pr-2 py-2 border border-line ${beat ? 'beat' : ''}" data-row="${ei}-${si}">
-      <div class="flex-1 flex items-center gap-2">
+      <div class="flex-1 flex items-start gap-2">
         <div class="flex-1">
           <input inputmode="decimal" data-field="weight" data-ei="${ei}" data-si="${si}"
                  value="${set.weight ?? ''}" placeholder="${pw}"
                  class="num w-full bg-transparent text-fg text-lg font-500 outline-none placeholder:text-mut/50" />
-          <div class="text-[9px] uppercase tracking-widest text-mut num">kg</div>
+          <div class="flex items-center justify-between mt-1">
+            ${stepBtn('weight', -0.5, '−')}
+            <span class="text-[9px] uppercase tracking-widest text-mut num">kg</span>
+            ${stepBtn('weight', 0.5, '+')}
+          </div>
         </div>
-        <span class="num text-mut text-lg">×</span>
+        <span class="num text-mut text-lg pt-1.5">×</span>
         <div class="flex-1">
           <input inputmode="numeric" data-field="reps" data-ei="${ei}" data-si="${si}"
                  value="${set.reps ?? ''}" placeholder="${pr}"
                  class="num w-full bg-transparent text-fg text-lg font-500 outline-none placeholder:text-mut/50" />
-          <div class="text-[9px] uppercase tracking-widest text-mut num">reps</div>
+          <div class="flex items-center justify-between mt-1">
+            ${stepBtn('reps', -1, '−')}
+            <span class="text-[9px] uppercase tracking-widest text-mut num">reps</span>
+            ${stepBtn('reps', 1, '+')}
+          </div>
         </div>
       </div>
-      <span class="beat-dot opacity-0 text-amber text-xs num pr-2">✓</span>
+      <span class="beat-dot opacity-0 text-amber text-xs num self-center pr-1">✓</span>
     </div>`;
 }
 
@@ -584,6 +615,34 @@ function onFieldInput(input) {
   if (row) row.classList.toggle('beat', isBeat(en.sets[si], prev));
 }
 
+// clean numeric string: "60" stays "60", "60.5" stays "60.5"
+function formatWeight(v) { return String(Math.round(v * 2) / 2); }
+
+// − / + steppers. Base = current value, else previous suggestion, else 0.
+function stepField(ei, si, field, delta) {
+  const en = activeSession.entries[ei];
+  const set = en.sets[si];
+  const prev = en.previousSets && en.previousSets[si];
+  const cur = set[field];
+  let base;
+  if (cur !== '' && cur != null && !isNaN(parseFloat(cur))) {
+    base = parseFloat(cur);
+  } else {
+    const pv = prev ? (field === 'weight' ? prev.weight : prev.reps) : null;
+    base = (pv != null && pv !== '' && !isNaN(parseFloat(pv))) ? parseFloat(pv) : 0;
+  }
+  let val = base + delta;
+  if (val < 0) val = 0;
+  const out = field === 'weight' ? formatWeight(val) : String(Math.round(val));
+  set[field] = out;
+  saveActive();
+
+  const input = document.querySelector(`input[data-field="${field}"][data-ei="${ei}"][data-si="${si}"]`);
+  if (input) input.value = out;
+  const row = document.querySelector(`[data-row="${ei}-${si}"]`);
+  if (row) row.classList.toggle('beat', isBeat(set, prev));
+}
+
 function toggleFlag(ei) {
   const en = activeSession.entries[ei];
   en.flagIncrease = !en.flagIncrease; // saved into this session's entry on finish
@@ -600,8 +659,11 @@ function openModal(html) {
 }
 function closeModal() { $('#modal').classList.add('hidden'); $('#modalCard').innerHTML = ''; }
 
+let wmIds = []; // working ordered exercise-id list while the workout modal is open
+
 function workoutModal(id) {
   const w = id ? workoutById(id) : null;
+  wmIds = w ? [...(w.exerciseIds || [])] : [];
   openModal(`
     <div class="flex items-center justify-between mb-4">
       <h3 class="font-disp text-lg font-700">${w ? 'Edit routine' : 'New routine'}</h3>
@@ -610,11 +672,45 @@ function workoutModal(id) {
     <label class="block text-xs uppercase tracking-widest text-mut mb-1">Name</label>
     <input id="wname" value="${w ? esc(w.name) : ''}" placeholder="e.g. Push Day"
            class="w-full bg-panel2 border border-line rounded-xl px-3 py-3 text-fg outline-none focus:border-amber/60 mb-5" />
+
+    <label class="block text-xs uppercase tracking-widest text-mut mb-2">Exercises — in workout order</label>
+    <div id="wmList" class="space-y-2 mb-4"></div>
+
+    <label class="block text-xs uppercase tracking-widest text-mut mb-2">Add exercise</label>
+    <div id="wmAdd" class="flex flex-wrap gap-2 mb-6"></div>
+
     <div class="flex gap-2">
       ${w ? `<button data-mact="delworkout" data-id="${w.id}" class="px-4 py-3 rounded-xl border border-line text-mut active:text-fg">Delete</button>` : ''}
       <button data-mact="saveworkout" data-id="${w ? w.id : ''}" class="flex-1 bg-amber text-ink font-700 rounded-xl py-3">Save</button>
     </div>`);
+  renderWmList();
   setTimeout(() => $('#wname')?.focus(), 50);
+}
+
+function renderWmList() {
+  const list = $('#wmList'), add = $('#wmAdd');
+  if (!list || !add) return;
+  list.innerHTML = wmIds.length
+    ? wmIds.map((exId, i) => {
+        const ex = exerciseById(exId);
+        if (!ex) return '';
+        return `
+          <div class="flex items-center gap-1.5 bg-panel2 border border-line rounded-xl pl-3 pr-2 py-2">
+            <span class="num text-mut text-xs w-4">${i + 1}</span>
+            <span class="flex-1 text-sm truncate">${esc(ex.name)}</span>
+            <button data-mact="wmup" data-i="${i}" class="w-9 h-9 rounded-lg border border-line text-mut active:text-fg text-base ${i === 0 ? 'opacity-25 pointer-events-none' : ''}">↑</button>
+            <button data-mact="wmdown" data-i="${i}" class="w-9 h-9 rounded-lg border border-line text-mut active:text-fg text-base ${i === wmIds.length - 1 ? 'opacity-25 pointer-events-none' : ''}">↓</button>
+            <button data-mact="wmremove" data-i="${i}" class="w-9 h-9 rounded-lg border border-line text-mut active:text-fg text-lg leading-none">×</button>
+          </div>`;
+      }).join('')
+    : `<div class="text-xs text-mut border border-dashed border-line rounded-xl py-3 text-center">No exercises yet — add from below.</div>`;
+
+  const available = state.exercises.filter(e => !wmIds.includes(e.id));
+  add.innerHTML = available.length
+    ? available.map(e => `<button data-mact="wmadd" data-id="${e.id}" class="text-sm rounded-full px-3.5 py-2 border bg-panel2 text-mut border-line active:text-fg">${esc(e.name)} +</button>`).join('')
+    : (state.exercises.length
+        ? '<span class="text-xs text-mut">All exercises added.</span>'
+        : '<span class="text-xs text-mut">No exercises yet — create some below in the Exercises list first.</span>');
 }
 
 function exerciseModal(id) {
@@ -634,22 +730,13 @@ function exerciseModal(id) {
            class="w-full bg-panel2 border border-line rounded-xl px-3 py-3 text-fg outline-none focus:border-amber/60 mb-4 resize-none">${e ? esc(e.description) : ''}</textarea>
 
     <label class="block text-xs uppercase tracking-widest text-mut mb-2">Working sets</label>
-    <div class="flex items-center gap-4 mb-5">
+    <div class="flex items-center gap-4 mb-2">
       <button data-setstep="-1" class="w-11 h-11 rounded-xl bg-panel2 border border-line text-fg text-2xl leading-none active:border-amber/60">−</button>
       <span id="esets" class="num text-3xl font-700 w-10 text-center">${e ? e.sets : DEFAULT_SETS}</span>
       <button data-setstep="1" class="w-11 h-11 rounded-xl bg-panel2 border border-line text-fg text-2xl leading-none active:border-amber/60">+</button>
       <span class="text-xs text-mut ml-1">sets loaded each session</span>
     </div>
-
-    <label class="block text-xs uppercase tracking-widest text-mut mb-2">Link to routines</label>
-    <div class="flex flex-wrap gap-2 mb-5">
-      ${state.workouts.length
-        ? state.workouts.map(w => {
-            const on = e && e.workoutIds.includes(w.id);
-            return `<button data-wtoggle="${w.id}" class="wchip text-sm rounded-full px-3.5 py-2 border ${on ? 'bg-amber text-ink border-amber font-600' : 'bg-panel2 text-mut border-line'}">${esc(w.name)}</button>`;
-          }).join('')
-        : '<span class="text-xs text-mut">No routines yet — create one first.</span>'}
-    </div>
+    <p class="text-[11px] text-mut mb-5">To add this exercise to a routine, open the routine and use “Add exercise”.</p>
 
     <div class="flex gap-2">
       ${e ? `<button data-mact="delexercise" data-id="${e.id}" class="px-4 py-3 rounded-xl border border-line text-mut active:text-fg">Delete</button>` : ''}
@@ -662,18 +749,6 @@ function exerciseModal(id) {
       let n = parseInt(el.textContent, 10) + parseInt(btn.dataset.setstep, 10);
       n = Math.max(1, Math.min(10, n));
       el.textContent = n;
-    });
-  });
-  // toggle chips locally
-  $('#modalCard').querySelectorAll('.wchip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      const on = chip.classList.toggle('bg-amber');
-      chip.classList.toggle('text-ink', on);
-      chip.classList.toggle('border-amber', on);
-      chip.classList.toggle('font-600', on);
-      chip.classList.toggle('bg-panel2', !on);
-      chip.classList.toggle('text-mut', !on);
-      chip.classList.toggle('border-line', !on);
     });
   });
   setTimeout(() => $('#ename')?.focus(), 50);
@@ -707,13 +782,12 @@ function sessionModal(id) {
 function saveWorkoutFromModal(id) {
   const name = $('#wname').value.trim();
   if (!name) { toast('Name required'); return; }
-  if (id) workoutById(id).name = name;
-  else state.workouts.push({ id: uid(), name });
+  if (id) { const w = workoutById(id); w.name = name; w.exerciseIds = [...wmIds]; }
+  else state.workouts.push({ id: uid(), name, exerciseIds: [...wmIds] });
   save(); closeModal(); render();
 }
 function deleteWorkout(id) {
   state.workouts = state.workouts.filter(w => w.id !== id);
-  state.exercises.forEach(e => { e.workoutIds = e.workoutIds.filter(x => x !== id); });
   save(); closeModal(); render();
 }
 function saveExerciseFromModal(id) {
@@ -721,17 +795,18 @@ function saveExerciseFromModal(id) {
   if (!name) { toast('Name required'); return; }
   const desc = $('#edesc').value.trim();
   const sets = Math.max(1, Math.min(10, parseInt($('#esets').textContent, 10) || DEFAULT_SETS));
-  const workoutIds = [...$('#modalCard').querySelectorAll('.wchip.bg-amber')].map(c => c.dataset.wtoggle);
   if (id) {
     const e = exerciseById(id);
-    e.name = name; e.description = desc; e.sets = sets; e.workoutIds = workoutIds;
+    e.name = name; e.description = desc; e.sets = sets;
   } else {
-    state.exercises.push({ id: uid(), name, description: desc, sets, workoutIds });
+    state.exercises.push({ id: uid(), name, description: desc, sets });
   }
   save(); closeModal(); render();
 }
 function deleteExercise(id) {
   state.exercises = state.exercises.filter(e => e.id !== id);
+  // also drop it from any routine's ordered list
+  state.workouts.forEach(w => { w.exerciseIds = (w.exerciseIds || []).filter(x => x !== id); });
   save(); closeModal(); render();
 }
 function deleteSession(id) {
@@ -777,6 +852,7 @@ $('#view').addEventListener('click', e => {
       if (confirm('Discard this session? Nothing will be saved.')) cancelWorkout();
       break;
     case 'toggleflag': toggleFlag(ei); break;
+    case 'step': stepField(ei, +btn.dataset.si, btn.dataset.field, parseFloat(btn.dataset.delta)); break;
     case 'toggleinfo': {
       const panel = document.querySelector(`[data-info="${ei}"]`);
       if (panel) panel.classList.toggle('hidden');
@@ -796,6 +872,7 @@ $('#modalCard').addEventListener('click', e => {
   const btn = e.target.closest('[data-mact]');
   if (!btn) return;
   const act = btn.dataset.mact, id = btn.dataset.id;
+  const i = btn.dataset.i != null ? +btn.dataset.i : -1;
   switch (act) {
     case 'close': closeModal(); break;
     case 'saveworkout': saveWorkoutFromModal(id); break;
@@ -803,6 +880,10 @@ $('#modalCard').addEventListener('click', e => {
     case 'saveexercise': saveExerciseFromModal(id); break;
     case 'delexercise': if (confirm('Delete this exercise?')) deleteExercise(id); break;
     case 'delsession': if (confirm('Delete this session from history?')) deleteSession(id); break;
+    case 'wmadd': wmIds.push(id); renderWmList(); break;
+    case 'wmremove': wmIds.splice(i, 1); renderWmList(); break;
+    case 'wmup': if (i > 0) { [wmIds[i - 1], wmIds[i]] = [wmIds[i], wmIds[i - 1]]; renderWmList(); } break;
+    case 'wmdown': if (i < wmIds.length - 1) { [wmIds[i + 1], wmIds[i]] = [wmIds[i], wmIds[i + 1]]; renderWmList(); } break;
   }
 });
 $('#modalBackdrop').addEventListener('click', closeModal);
@@ -821,8 +902,8 @@ $('#modalBackdrop').addEventListener('click', closeModal);
        </g>
      </svg>`);
   const manifest = {
-    name: 'Ledger — Workout Tracker',
-    short_name: 'Ledger',
+    name: 'PABLO — Workout Tracker',
+    short_name: 'PABLO',
     start_url: '.',
     scope: '.',
     display: 'standalone',
