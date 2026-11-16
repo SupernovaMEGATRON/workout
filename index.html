@@ -424,6 +424,13 @@ function renderManage(view) {
     html += '</div>';
   }
 
+  // Backup
+  html += `<div class="mt-8 pt-5 border-t border-line">
+             <h2 class="font-disp text-sm uppercase tracking-widest text-mut mb-3">Backup</h2>
+             <button data-act="export" class="w-full bg-panel border border-line rounded-xl py-3 text-sm text-fg active:border-amber/60">Export my data</button>
+             <p class="text-[11px] text-mut mt-2">Saves your routines, exercises and all sessions to a file. Nothing is changed or removed.</p>
+           </div>`;
+
   view.innerHTML = html;
 }
 
@@ -778,6 +785,98 @@ function sessionModal(id) {
     <button data-mact="delsession" data-id="${s.id}" class="w-full mt-5 py-3 rounded-xl border border-line text-mut active:text-fg text-sm">Delete this session</button>`);
 }
 
+/* ---------- export (backup) ---------- */
+// The backup holds the stored values exactly as they are in LocalStorage, so it can be
+// restored byte for byte. Read-only: exporting never writes to storage.
+function buildExport() {
+  const raw = localStorage.getItem(DB_KEY);
+  return {
+    app: 'PABLO',
+    format: 1,
+    exportedAt: new Date().toISOString(),
+    storage: {
+      [DB_KEY]: raw != null ? raw : JSON.stringify(state),
+      [ACTIVE_KEY]: localStorage.getItem(ACTIVE_KEY),
+    },
+  };
+}
+function exportText() { return JSON.stringify(buildExport(), null, 2); }
+function exportFileName(ext) {
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  return `pablo-backup-${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}.${ext}`;
+}
+// Phones only share a few file types; fall back from .json to .txt (same content).
+function exportShareFile() {
+  if (!navigator.canShare || typeof File === 'undefined') return null;
+  const text = exportText();
+  const candidates = [
+    new File([text], exportFileName('json'), { type: 'application/json' }),
+    new File([text], exportFileName('txt'), { type: 'text/plain' }),
+  ];
+  return candidates.find(f => { try { return navigator.canShare({ files: [f] }); } catch (e) { return false; } }) || null;
+}
+
+function exportModal() {
+  const canShare = !!exportShareFile();
+  const n = (k, one, many) => `${state[k].length} ${state[k].length === 1 ? one : many}`;
+  openModal(`
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="font-disp text-lg font-700">Export my data</h3>
+      <button data-mact="close" class="text-mut text-xl leading-none">×</button>
+    </div>
+    <p class="text-xs num text-mut mb-5">${n('workouts', 'routine', 'routines')} · ${n('exercises', 'exercise', 'exercises')} · ${n('sessions', 'session', 'sessions')}</p>
+    <div class="space-y-2">
+      <button data-mact="exportfile" class="w-full bg-amber text-ink font-700 rounded-xl py-3">Save as file</button>
+      ${canShare ? '<button data-mact="exportshare" class="w-full bg-panel2 border border-line rounded-xl py-3 text-fg">Share file…</button>' : ''}
+      <button data-mact="exportcopy" class="w-full bg-panel2 border border-line rounded-xl py-3 text-fg">Copy as text</button>
+    </div>
+    <p class="text-[11px] text-mut mt-4">“Save as file” puts the backup in your Downloads folder. Your data in the app is not touched.</p>`);
+}
+
+function exportDownload() {
+  const blob = new Blob([exportText()], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = exportFileName('json');
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  toast('Backup file saved');
+}
+
+async function exportShare() {
+  const file = exportShareFile();
+  if (!file) { toast('Sharing not available — use Save as file'); return; }
+  try {
+    await navigator.share({ files: [file], title: 'PABLO backup' });
+  } catch (e) {
+    if (e && e.name !== 'AbortError') toast('Share failed — use Save as file');
+  }
+}
+
+async function exportCopy() {
+  const text = exportText();
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('Backup copied');
+  } catch (e) {
+    // Older browsers / non-secure pages: copy through a temporary text box.
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (err) {}
+    ta.remove();
+    toast(ok ? 'Backup copied' : 'Copy failed — use Save as file');
+  }
+}
+
 /* ---------- modal save handlers ---------- */
 function saveWorkoutFromModal(id) {
   const name = $('#wname').value.trim();
@@ -847,6 +946,7 @@ $('#view').addEventListener('click', e => {
     case 'editworkout': workoutModal(id); break;
     case 'newexercise': exerciseModal(); break;
     case 'editexercise': exerciseModal(id); break;
+    case 'export': exportModal(); break;
     case 'finish': finishWorkout(); break;
     case 'cancel':
       if (confirm('Discard this session? Nothing will be saved.')) cancelWorkout();
@@ -880,6 +980,9 @@ $('#modalCard').addEventListener('click', e => {
     case 'saveexercise': saveExerciseFromModal(id); break;
     case 'delexercise': if (confirm('Delete this exercise?')) deleteExercise(id); break;
     case 'delsession': if (confirm('Delete this session from history?')) deleteSession(id); break;
+    case 'exportfile': exportDownload(); break;
+    case 'exportshare': exportShare(); break;
+    case 'exportcopy': exportCopy(); break;
     case 'wmadd': wmIds.push(id); renderWmList(); break;
     case 'wmremove': wmIds.splice(i, 1); renderWmList(); break;
     case 'wmup': if (i > 0) { [wmIds[i - 1], wmIds[i]] = [wmIds[i], wmIds[i - 1]]; renderWmList(); } break;
