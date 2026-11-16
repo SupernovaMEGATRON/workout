@@ -1,0 +1,38 @@
+* { -webkit-tap-highlight-color: transparent; }
+html, body { background: #0C0E12; }
+body {
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  padding-bottom: env(safe-area-inset-bottom);
+  overscroll-behavior-y: none;
+}
+.num { font-family: "JetBrains Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+/* hide number spinners */
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; }
+
+::-webkit-scrollbar { width: 0; height: 0; }
+
+.view-enter { animation: viewin .22s ease; }
+@keyframes viewin { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* module menu */
+.menu-panel { animation: menuin .18s ease; }
+@keyframes menuin { from { transform: translateX(-100%); } to { transform: none; } }
+.menu-backdrop { animation: fadein .18s ease; }
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+
+/* a set that meets or beats the previous session */
+.beat { box-shadow: inset 3px 0 0 0 #F5A524; }
+.beat .beat-dot { opacity: 1; }
+
+.flag-pulse { animation: flagpulse 1.8s ease-in-out infinite; }
+@keyframes flagpulse { 0%,100% { box-shadow: 0 0 0 0 rgba(245,165,36,.0); } 50% { box-shadow: 0 0 0 3px rgba(245,165,36,.14); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .view-enter, .flag-pulse, .menu-panel, .menu-backdrop { animation: none; }
+}
+
+.switch { transition: background-color .18s ease; }
+.switch .knob { transition: transform .18s ease; }
