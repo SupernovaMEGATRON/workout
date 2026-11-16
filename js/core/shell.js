@@ -59,6 +59,9 @@ export function normalise(route) {
 
 export function go(route, opts) { nav.go(normalise(route), opts); }
 
+// Go up to a parent screen (see nav.up).
+export function up(route) { nav.up(normalise(route)); }
+
 // Re-draw the current screen. { keepScroll: true } keeps the scroll position.
 export function refresh(opts) { render(nav.currentRoute(), opts || {}); }
 

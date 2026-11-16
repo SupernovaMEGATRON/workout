@@ -34,6 +34,7 @@ const FILES = [
   'js/modules/home.js',
   'js/modules/workout.js',
   'js/modules/calories.js',
+  'js/modules/projects.js',
   'js/modules/grocery.js',
   'js/modules/settings.js',
 ];

@@ -6,6 +6,7 @@ import { today } from './core/dates.js';
 import home from './modules/home.js';
 import workout from './modules/workout.js';
 import calories from './modules/calories.js';
+import projects from './modules/projects.js';
 import grocery from './modules/grocery.js';
 import settings from './modules/settings.js';
 
@@ -13,6 +14,7 @@ import settings from './modules/settings.js';
 register(home);
 register(workout);
 register(calories);
+register(projects);
 register(grocery);
 register(settings);
 
@@ -41,23 +43,46 @@ async function initServiceWorker() {
   // never from the browser's HTTP cache, or a new release could go unnoticed.
   try { reg = await navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }); } catch (e) { return; }
 
-  const offer = () => { if (reg.waiting && navigator.serviceWorker.controller) $('#updateBar').classList.remove('hidden'); };
-  const watch = sw => { if (sw) sw.addEventListener('statechange', () => { if (sw.state === 'installed') offer(); }); };
-  offer();
+  // A new version is ready once its worker reaches "installed". The worker is passed
+  // around directly: reg.waiting is not always filled in yet when that event fires.
+  let ready = null;
+  const offer = sw => {
+    if (!sw || !navigator.serviceWorker.controller) return;   // first install: nothing to offer
+    ready = sw;
+    $('#updateBar').classList.remove('hidden');
+  };
+  // The browser occasionally drops an install for no stated reason (seen when an update
+  // lands in the first moments after the app loads). Checking again shortly fixes it.
+  let retries = 0;
+  const watch = sw => {
+    if (!sw) return;
+    if (sw.state === 'installed') { offer(sw); return; }
+    let installed = false;
+    sw.addEventListener('statechange', () => {
+      if (sw.state === 'installed') { installed = true; offer(sw); }
+      else if (sw.state === 'redundant' && !installed && retries < 3) {
+        retries++;
+        setTimeout(() => reg.update().catch(() => {}), 4000);
+      }
+    });
+  };
+  offer(reg.waiting);
   watch(reg.installing);
   reg.addEventListener('updatefound', () => watch(reg.installing));
 
   let updating = false;
   $('#updateBtn').addEventListener('click', () => {
-    if (!reg.waiting) { location.reload(); return; }
+    const sw = reg.waiting || ready;
+    if (!sw) { location.reload(); return; }
     updating = true;
-    reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+    sw.postMessage({ type: 'SKIP_WAITING' });
   });
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (updating) location.reload(); });
 
   // Look for a new version each time the app comes back to the foreground.
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') reg.update().catch(() => {});
+    if (document.visibilityState !== 'visible') return;
+    reg.update().then(() => { offer(reg.waiting); watch(reg.installing); }).catch(() => {});
   });
 }
 initServiceWorker();

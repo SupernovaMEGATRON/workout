@@ -12,6 +12,7 @@ let current = '';
 let onChange = () => {};
 let onRootBack = () => {};
 
+let trail = [];        // routes of the screens below the current one, oldest first (best effort)
 const overlays = [];   // close functions of open overlays (menu, popup), innermost last
 let pending = [];      // our own history.go(-n) calls that have not landed yet
 
@@ -57,12 +58,29 @@ export function go(route, opts = {}) {
   if (pending.length) { pending[pending.length - 1].after.push(() => go(route, opts)); return; }
 
   if (route !== current) {
+    const replacing = opts.replace && !stateIs('root');
+    if (!replacing) trail.push(current);
     current = route;
-    if (opts.replace && !stateIs('root')) history.replaceState({ pablo: 'screen' }, '', hashOf(route));
+    if (replacing) history.replaceState({ pablo: 'screen' }, '', hashOf(route));
     else history.pushState({ pablo: 'screen' }, '', hashOf(route));
     stopWaiting();
   }
   onChange(current);
+}
+
+// Go "up" to a parent screen. If that screen is somewhere below in the history (the
+// usual case: the user drilled down from it), step back to it, so the back gesture
+// does not return to the screen being left. Otherwise replace the current screen.
+export function up(route) {
+  if (overlays.length) { closeAllOverlays(() => up(route)); return; }
+  if (pending.length) { pending[pending.length - 1].after.push(() => up(route)); return; }
+  if (route === current) { onChange(current); return; }
+
+  const i = trail.lastIndexOf(route);
+  if (i === -1) { go(route, { replace: true }); return; }
+  const steps = trail.length - i;
+  trail = trail.slice(0, i);
+  back(steps, () => { current = route; onChange(current); });
 }
 
 // Correct the address of the current screen without adding a history entry or re-rendering.
@@ -118,5 +136,10 @@ function onPop(e) {
     return;
   }
   const route = routeFromHash();
-  if (route && route !== current) { current = route; onChange(current); }
+  if (route && route !== current) {
+    if (trail.length && trail[trail.length - 1] === route) trail.pop();
+    else trail = [];                                           // lost track (e.g. forward): start over
+    current = route;
+    onChange(current);
+  }
 }

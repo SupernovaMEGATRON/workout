@@ -33,7 +33,7 @@ tools/check_files.py    release check
 ## How it fits together
 
 - **Modules** are objects registered in `js/app.js` (the order is the menu order). Each declares its name, icon, bottom tabs and a `render(el, { tab, params })`. Adding a module means one file in `js/modules/`, one `register()` line, and the file name in `sw.js`.
-- **Routes** are `module/tab/…` in the URL hash. `shell.go(route)` navigates; `shell.refresh()` redraws the current screen. Each render gets a fresh element, so a module attaches its listeners to it without leaking.
+- **Routes** are `module/tab/…` in the URL hash. `shell.go(route)` navigates (`{ replace: true }` to step sideways without adding history); `shell.up(route)` returns to a parent screen; `shell.refresh()` redraws the current screen. Each render gets a fresh element, so a module attaches its listeners to it without leaking.
 - **Back gesture** (`nav.js`): menu and popups add a history entry, so back closes them; then back goes to the previous screen; on the first screen a second back is needed to leave. Never call `history.pushState` or `history.back` outside `nav.js`.
 - **Storage:** LocalStorage, one key per module, named `pablo_<module>_v1` (workout keeps its `ledger_` keys). Any key with the `pablo_` or `ledger_` prefix is included in backups automatically. `pablo_shell_v1` (last screen) is the only one excluded.
 - **Updates:** the service worker precaches the files listed in `sw.js` under a cache named after the version. A new version installs in the background and waits; the page shows "New version available" and switches when the user taps Update. Stored data is never involved.
