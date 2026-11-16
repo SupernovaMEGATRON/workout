@@ -29,8 +29,11 @@ const FILES = [
   'js/core/ui.js',
   'js/core/shell.js',
   'js/core/backup.js',
+  'js/core/dates.js',
+  'js/core/icons.js',
   'js/modules/home.js',
   'js/modules/workout.js',
+  'js/modules/calories.js',
   'js/modules/settings.js',
 ];
 

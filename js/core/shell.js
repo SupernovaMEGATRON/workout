@@ -4,7 +4,7 @@
    A module is an object:
      id        short name used in routes and storage keys ("workout")
      name      shown in the menu and the header
-     icon      one character shown in the menu
+     icon      shown in the menu: one character, or an SVG from core/icons.js
      tabs      [{ id, label, icon, badge?() }] — the module's bottom tabs ([] for none)
      render    (el, { tab, params }) — draw the screen into a fresh, empty element
      status?   () => { label, route } | null — something in progress, shown in the
@@ -29,6 +29,9 @@ export function register(mod) { modules.push(mod); }
 export const allModules = () => modules;
 
 /* ---------- remembered screen ---------- */
+// An icon is a text symbol, or SVG markup from core/icons.js.
+const iconHTML = icon => (String(icon || '').startsWith('<svg') ? icon : esc(icon || '•'));
+
 let shellState = (() => {
   try { return JSON.parse(localStorage.getItem(SHELL_KEY)) || {}; } catch (e) { return {}; }
 })();
@@ -101,7 +104,7 @@ function renderChrome(mod, tab) {
     $('#tabs').style.gridTemplateColumns = `repeat(${mod.tabs.length}, minmax(0, 1fr))`;
     $('#tabs').innerHTML = mod.tabs.map(t => `
       <button data-route="${esc(mod.id + '/' + t.id)}" class="py-3 flex flex-col items-center gap-1 relative ${t.id === tab ? 'text-amber' : 'text-mut'}">
-        <span class="text-base leading-none">${esc(t.icon || '•')}</span>
+        <span class="text-base leading-none h-5 flex items-center justify-center">${iconHTML(t.icon)}</span>
         <span class="text-[11px] font-500 tracking-wide">${esc(t.label)}</span>
         ${t.badge && t.badge() ? '<span class="absolute top-2 right-1/2 translate-x-4 w-1.5 h-1.5 rounded-full bg-amber"></span>' : ''}
       </button>`).join('');
@@ -110,7 +113,7 @@ function renderChrome(mod, tab) {
   // module menu
   const item = m => `
     <button data-module="${esc(m.id)}" class="w-full flex items-center gap-3 px-4 py-3.5 text-left ${m.id === mod.id ? 'text-amber bg-panel2' : 'text-fg'}">
-      <span class="w-6 text-center text-lg leading-none ${m.id === mod.id ? '' : 'text-mut'}">${esc(m.icon || '•')}</span>
+      <span class="w-6 flex items-center justify-center text-lg leading-none ${m.id === mod.id ? '' : 'text-mut'}">${iconHTML(m.icon)}</span>
       <span class="font-disp text-base font-600">${esc(m.name)}</span>
     </button>`;
   $('#menuList').innerHTML = modules.filter(m => !m.footer).map(item).join('');

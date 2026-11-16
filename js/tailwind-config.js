@@ -13,6 +13,8 @@ tailwind.config = {
         amberd: '#40320F',
         steel:  '#7FA6C9',
         steeld: '#233240',
+        good:   '#4CC38A',
+        bad:    '#F0616D',
       },
       fontFamily: {
         disp: ['"Space Grotesk"', 'system-ui', 'sans-serif'],
