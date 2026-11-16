@@ -1,5 +1,5 @@
 /* Settings — backup (export / import) and app version. */
-import { $, esc, toast, openModal, closeModal } from '../core/ui.js';
+import { $, esc, toast, openModal, closeModal, copyText } from '../core/ui.js';
 import { allModules } from '../core/shell.js';
 import { buildBackup, backupText, backupFileName, parseBackup, applyBackup } from '../core/backup.js';
 
@@ -127,24 +127,7 @@ async function exportShare() {
 }
 
 async function exportCopy() {
-  const text = backupText();
-  try {
-    await navigator.clipboard.writeText(text);
-    toast('Backup copied');
-  } catch (e) {
-    // Older browsers / non-secure pages: copy through a temporary text box.
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    ta.setAttribute('readonly', '');
-    ta.style.position = 'fixed';
-    ta.style.opacity = '0';
-    document.body.appendChild(ta);
-    ta.select();
-    let ok = false;
-    try { ok = document.execCommand('copy'); } catch (err) {}
-    ta.remove();
-    toast(ok ? 'Backup copied' : 'Copy failed — use Save as file');
-  }
+  toast((await copyText(backupText())) ? 'Backup copied' : 'Copy failed — use Save as file');
 }
 
 /* ---------- import ---------- */

@@ -12,7 +12,7 @@
 
    Calories are a ceiling (over = bad). Protein is a target (reached = good).
    ========================================================================= */
-import { $, esc, uid, toast, openModal, closeModal } from '../core/ui.js';
+import { $, esc, uid, toast, openModal, closeModal, readNumber } from '../core/ui.js';
 import { go, refresh } from '../core/shell.js';
 import { icons } from '../core/icons.js';
 import { today, addDays, isDay, weekdayIndex, fmtDay, relDay, WEEKDAYS } from '../core/dates.js';
@@ -39,13 +39,6 @@ function migrate(data) {
 function save() { localStorage.setItem(KEY, JSON.stringify(state)); }
 
 /* ---------- numbers ---------- */
-// "" → null (not given). "1,5" and "1.5" → 1.5. Anything else → NaN (invalid).
-function readNumber(text) {
-  const t = String(text ?? '').trim().replace(',', '.');
-  if (t === '') return null;
-  const n = Number(t);
-  return Number.isFinite(n) && n >= 0 ? n : NaN;
-}
 const fmt = n => String(Math.round((n || 0) * 10) / 10);
 
 /* ---------- goals ---------- */

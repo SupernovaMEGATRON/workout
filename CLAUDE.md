@@ -22,7 +22,7 @@ vendor/                 Tailwind runtime and fonts, stored locally
 js/app.js               registers modules, starts the shell, registers the service worker
 js/core/nav.js          routes in the URL hash + history; back-gesture handling
 js/core/shell.js        header, module menu, bottom tabs; module interface (documented at the top)
-js/core/ui.js           $, esc, uid, toast, popup
+js/core/ui.js           $, esc, uid, toast, popup, readNumber, copyText
 js/core/backup.js       export / import of all modules' data
 js/core/dates.js        local calendar days ("YYYY-MM-DD") and date formatting
 js/core/icons.js        drawn (SVG) icons for menus and tabs

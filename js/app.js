@@ -6,12 +6,14 @@ import { today } from './core/dates.js';
 import home from './modules/home.js';
 import workout from './modules/workout.js';
 import calories from './modules/calories.js';
+import grocery from './modules/grocery.js';
 import settings from './modules/settings.js';
 
 // Menu order. To add a module: import it and register it here.
 register(home);
 register(workout);
 register(calories);
+register(grocery);
 register(settings);
 
 initUi();

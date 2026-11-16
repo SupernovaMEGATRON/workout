@@ -6,6 +6,38 @@ export const uid = () => Date.now().toString(36) + Math.random().toString(36).sl
 export const esc = s => String(s ?? '').replace(/[&<>"']/g,
   c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+/* ---------- form helpers ---------- */
+// "" → null (not given). "1,5" and "1.5" → 1.5. Anything else → NaN (invalid).
+export function readNumber(text) {
+  const t = String(text ?? '').trim().replace(',', '.');
+  if (t === '') return null;
+  const n = Number(t);
+  return Number.isFinite(n) && n >= 0 ? n : NaN;
+}
+
+// Copy text to the clipboard. Resolves to true when it worked.
+// Must be called directly from a tap. The clipboard only works on the published
+// (https) site or on localhost.
+export async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (e) {
+    // Older browsers / non-secure pages: copy through a temporary text box.
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (err) {}
+    ta.remove();
+    return ok;
+  }
+}
+
 /* ---------- toast ---------- */
 let toastTimer = null;
 export function toast(msg) {
