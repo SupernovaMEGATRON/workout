@@ -25,4 +25,6 @@ export const icons = {
   routine: svg('<path d="M4.5 11a7.5 7.5 0 0 1 12.9-4.6L19.5 8.5"/><path d="M19.5 4v4.5H15"/><path d="M19.5 13a7.5 7.5 0 0 1-12.9 4.6L4.5 15.5"/><path d="M4.5 20v-4.5H9"/>'),
   // a calendar page
   calendar: svg('<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/><circle cx="8.5" cy="14" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="14" r="1" fill="currentColor" stroke="none"/>'),
+  // a house
+  home: svg('<path d="M4 11 12 4.5 20 11"/><path d="M6 9.5V19.5h12V9.5"/><path d="M10 19.5v-5h4v5"/>'),
 };

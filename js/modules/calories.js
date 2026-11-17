@@ -136,7 +136,7 @@ function standing(kind, total, goal) {
     : { tone: 'text-fg', bar: 'bg-steel', noteTone: 'text-mut', note: `${fmt(goal - total)} to go`, pct };
 }
 
-function statBlock(label, kind, total, goal, unit) {
+export function statBlock(label, kind, total, goal, unit) {
   const s = standing(kind, total, goal);
   return `
     <div data-stat="${kind}">

@@ -1,6 +1,6 @@
 # PABLO
 
-Personal daily app (workout today; calories, grocery list, projects, routine, planning and a home summary to come). One user, phone only (Android, installed from Chrome). Published with GitHub Pages from `main` at `/workout/`.
+Personal daily app: Home (today's summary), Workout, Calories, Projects, Routine, Planning, Grocery list, Settings. One user, phone only (Android, installed from Chrome). Published with GitHub Pages from `main` at `/workout/`.
 
 ## Rules that must not be broken
 
@@ -41,7 +41,7 @@ tools/check_files.py    release check
 - **Dates:** a day is a local calendar day written `YYYY-MM-DD` (`js/core/dates.js`), never a UTC timestamp. When the app returns to the foreground on a new day, the current screen is redrawn (`js/app.js`).
 - **Icons:** use the drawn icons in `js/core/icons.js` for new modules; text symbols render differently from phone to phone. Workout keeps its original symbols.
 - **Routine keeps past days frozen:** every day up to yesterday is written down before any todo is edited or deleted (`freeze()` in `routine.js`), so history never changes. Any new code that changes todos must call `freeze()` first.
-- **Cross-module reads:** a module exports the functions other modules may use (for example `daySummary(day)` in `calories.js`, for Home). Data has one owner; nothing is copied. Planning (`planning.js`) stores nothing: it reads and changes Projects and Routine through their exports (`datedTasks`, `toggleTask`, `setTaskDate`, `itemsOn`, `bump`, `addOneOff`, `setOneOffDate`…).
+- **Cross-module reads:** a module exports the functions other modules may use (for example `daySummary(day)` in `calories.js`, for Home). Data has one owner; nothing is copied. Planning (`planning.js`) and Home (`home.js`) store nothing: it reads and changes Projects and Routine through their exports (`datedTasks`, `toggleTask`, `setTaskDate`, `itemsOn`, `bump`, `addOneOff`, `setOneOffDate`…).
 
 ## Look
 
