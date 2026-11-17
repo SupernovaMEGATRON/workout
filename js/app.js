@@ -8,6 +8,7 @@ import workout from './modules/workout.js';
 import calories from './modules/calories.js';
 import projects from './modules/projects.js';
 import routine from './modules/routine.js';
+import planning from './modules/planning.js';
 import grocery from './modules/grocery.js';
 import settings from './modules/settings.js';
 
@@ -17,6 +18,7 @@ register(workout);
 register(calories);
 register(projects);
 register(routine);
+register(planning);
 register(grocery);
 register(settings);
 
