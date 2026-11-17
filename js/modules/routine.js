@@ -293,14 +293,14 @@ function renderDay(el, day, base) {
           </div>`).join('')}
       </div>` : ''}
 
-    ${once.length || isToday ? sectionTitle('One-off', isToday ? '<button data-act="addonce" class="text-xs text-amber font-600">+ Add</button>' : '') : ''}
+    ${once.length || isToday ? sectionTitle('One-off') : ''}
     ${once.length ? `<div class="space-y-2">${once.map(i => rowHTML(i, day)).join('')}</div>`
       : isToday ? '<div class="text-xs text-mut">Nothing one-off today.</div>' : ''}
 
     ${routine.length ? sectionTitle('Routine') + `<div class="space-y-2">${routine.map(i => rowHTML(i, day)).join('')}</div>` : ''}
 
     ${!items.length && !isToday ? `<div class="text-center text-mut text-sm py-8 mt-5 border border-dashed border-line rounded-2xl">Nothing was due on this day.</div>` : ''}
-    ${!routine.length && isToday ? `<div class="text-center text-mut text-sm py-8 mt-5 border border-dashed border-line rounded-2xl">No routine today.<br>Create your recurring todos in Todos.</div>` : ''}`;
+    ${!routine.length && isToday ? `<div class="text-center text-mut text-sm py-8 mt-5 border border-dashed border-line rounded-2xl">No routine today.<br>Add your todos in the Todos tab.</div>` : ''}`;
 
   wireDayNav(el, day, base);
   el.addEventListener('click', e => {
@@ -315,7 +315,6 @@ function renderDay(el, day, base) {
         lateItems().forEach(t => { t.cleared = true; });
         save(); refresh({ keepScroll: true });
         break;
-      case 'addonce': todoModal(null, { kind: 'once', date: day }); break;
     }
   });
 }
@@ -398,14 +397,16 @@ function renderTodos(el) {
   el.innerHTML = `
     <div class="flex items-baseline justify-between mb-3">
       <h2 class="font-disp text-sm uppercase tracking-widest text-mut">Routine <span class="num normal-case tracking-normal">· ${recurring.length}</span></h2>
-      <button data-act="new" class="text-xs text-amber font-600">+ New</button>
     </div>
     ${recurring.length ? `<div class="space-y-2">${recurring.map(x => row(x, false)).join('')}</div>`
       : `<div class="text-center text-mut text-sm py-8 border border-dashed border-line rounded-2xl">No recurring todo yet.<br>Add the things you do every day or every week.</div>`}
 
     ${sectionTitle(`One-off <span class="num normal-case tracking-normal">· ${once.length}</span>`)}
     ${once.length ? `<div class="space-y-2">${once.map(x => row(x, true)).join('')}</div>`
-      : '<div class="text-xs text-mut">No one-off todo to come.</div>'}`;
+      : '<div class="text-xs text-mut">No one-off todo to come.</div>'}
+
+    <button data-act="new" class="w-full mt-7 bg-amber text-ink font-700 rounded-xl py-3.5 text-base active:scale-[.99] transition">Add a todo</button>
+    <p class="text-[11px] text-mut text-center mt-2">Recurring or one-off: choose it with “Repeat”.</p>`;
 
   el.addEventListener('click', e => {
     const btn = e.target.closest('[data-act]');

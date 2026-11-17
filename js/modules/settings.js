@@ -220,6 +220,5 @@ export default {
   icon: '⚙',
   tabs: [],
   footer: true,
-  remember: false,
   render,
 };

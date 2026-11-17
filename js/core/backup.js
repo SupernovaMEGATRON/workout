@@ -8,7 +8,7 @@
    ========================================================================= */
 
 const PREFIXES = ['ledger_', 'pablo_'];          // every key this app owns
-const NOT_DATA = ['pablo_shell_v1'];             // remembered screen, not worth backing up
+const NOT_DATA = ['pablo_shell_v1'];             // last screen, kept by older versions only
 // Keys that may legitimately be absent. Exported as null so that a restore removes them.
 const OPTIONAL = ['ledger_active_v1'];
 

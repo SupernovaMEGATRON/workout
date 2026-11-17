@@ -7,10 +7,10 @@
      items    [{ id, name, pos: { <shopId>: number } }]
               pos = where the item sits along the route through that shop
               (1 = at the entrance). A shop missing from pos = no position there.
-     checked  [itemId] — ticked in the List tab, kept until Generate
      shop     id of the shop last selected
      last     { shopId, shopName, text, count, at } — the last generated list
 
+   Ticks are kept in memory only: closing the app unticks everything.
    No quantities, no one-off items, no checklist for use in the shop.
    ========================================================================= */
 import { $, esc, uid, toast, openModal, closeModal, readNumber, copyText } from '../core/ui.js';
@@ -22,19 +22,20 @@ const KEY = 'pablo_grocery_v1';
 let state = load();
 let itemSort = 'az';        // Items tab: 'az' or a shop id
 let lastOpen = false;       // List tab: is the last generated list unfolded
+let checked = [];           // List tab: ticked item ids (not stored)
 
 function load() {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) return migrate(JSON.parse(raw));
   } catch (e) {}
-  return { shops: [{ id: uid(), name: 'Delhaize' }, { id: uid(), name: 'Intermarché' }], items: [], checked: [], shop: null, last: null };
+  return { shops: [{ id: uid(), name: 'Delhaize' }, { id: uid(), name: 'Intermarché' }], items: [], shop: null, last: null };
 }
 // Must stay idempotent and non-destructive.
 function migrate(data) {
   if (!Array.isArray(data.shops)) data.shops = [];
   if (!Array.isArray(data.items)) data.items = [];
-  if (!Array.isArray(data.checked)) data.checked = [];
+  delete data.checked;                         // ticks are no longer stored
   data.items.forEach(i => { if (!i.pos || typeof i.pos !== 'object') i.pos = {}; });
   if (data.last === undefined) data.last = null;
   return data;
@@ -74,7 +75,7 @@ const chip = (on, attrs, label) =>
 function renderList(el) {
   const shop = currentShop();
   const items = [...state.items].sort(byName);
-  const checked = new Set(state.checked);
+  const ticked = new Set(checked);
 
   if (!items.length) {
     el.innerHTML = `
@@ -96,12 +97,16 @@ function renderList(el) {
 
       ${lastCard()}
 
+      <div class="flex items-center justify-between mb-2">
+        <span id="gticked" class="text-xs text-mut num"></span>
+        <button data-act="uncheckall" id="guncheck" class="text-xs text-amber font-600 py-1">Uncheck all</button>
+      </div>
       ${items.length > 8 ? `<input id="gfilter" autocomplete="off" placeholder="Find an item…" class="${inputCls} mb-3" />` : ''}
       <div id="grows" class="space-y-2">
         ${items.map(i => `
           <button data-act="toggle" data-id="${esc(i.id)}" data-name="${esc(i.name.toLowerCase())}"
-                  class="w-full text-left bg-panel border rounded-2xl px-4 py-3 flex items-center gap-3 transition ${checked.has(i.id) ? 'border-amber/60' : 'border-line'}">
-            <span class="box shrink-0 w-6 h-6 rounded-md border flex items-center justify-center text-sm font-700 ${checked.has(i.id) ? 'bg-amber border-amber text-ink' : 'border-mut/60 text-transparent'}">✓</span>
+                  class="w-full text-left bg-panel border rounded-2xl px-4 py-3 flex items-center gap-3 transition ${ticked.has(i.id) ? 'border-amber/60' : 'border-line'}">
+            <span class="box shrink-0 w-6 h-6 rounded-md border flex items-center justify-center text-sm font-700 ${ticked.has(i.id) ? 'bg-amber border-amber text-ink' : 'border-mut/60 text-transparent'}">✓</span>
             <span class="flex-1 min-w-0 truncate">${esc(i.name)}</span>
             <span class="num text-xs shrink-0 ${shop && hasPos(i, shop.id) ? 'text-steel' : 'text-mut/60'}">${shop && hasPos(i, shop.id) ? fmtPos(i.pos[shop.id]) : '—'}</span>
           </button>`).join('')}
@@ -118,6 +123,7 @@ function renderList(el) {
       case 'shop': state.shop = btn.dataset.id; save(); refresh({ keepScroll: true }); break;
       case 'toggle': toggle(el, btn); break;
       case 'generate': generate(); break;
+      case 'uncheckall': checked = []; refresh({ keepScroll: true }); break;
       case 'copyagain': copyAgain(); break;
       case 'togglelast': lastOpen = !lastOpen; refresh({ keepScroll: true }); break;
     }
@@ -136,17 +142,19 @@ function renderList(el) {
 }
 
 function updateCount(el) {
-  const n = state.checked.length;
+  const n = checked.length;
   const span = $('#gcount', el);
   if (span) span.textContent = n ? ` · ${n} ${n === 1 ? 'item' : 'items'}` : '';
+  const label = $('#gticked', el), btn = $('#guncheck', el);
+  if (label) label.textContent = n ? `${n} checked` : 'Nothing checked';
+  if (btn) btn.classList.toggle('invisible', !n);
 }
 
 // Tick / untick in place, so the list does not jump and the search box keeps its text.
 function toggle(el, row) {
   const id = row.dataset.id;
-  const on = !state.checked.includes(id);
-  state.checked = on ? [...state.checked, id] : state.checked.filter(x => x !== id);
-  save();
+  const on = !checked.includes(id);
+  checked = on ? [...checked, id] : checked.filter(x => x !== id);
   row.classList.toggle('border-amber/60', on);
   row.classList.toggle('border-line', !on);
   const box = $('.box', row);
@@ -179,14 +187,14 @@ function lastCard() {
 async function generate() {
   const shop = currentShop();
   if (!shop) { toast('Add a shop in Items first'); return; }
-  const picked = state.items.filter(i => state.checked.includes(i.id));
+  const picked = state.items.filter(i => checked.includes(i.id));
   if (!picked.length) { toast('Check at least one item'); return; }
 
   const text = inShopOrder(picked, shop.id).map(i => i.name).join('\n');
   const copied = await copyText(text);          // first, while the tap still counts
 
   state.last = { shopId: shop.id, shopName: shop.name, text, count: picked.length, at: Date.now() };
-  state.checked = [];                           // ready for next time
+  checked = [];                           // ready for next time
   save();
   if (!copied) lastOpen = true;                 // so the text can at least be selected by hand
   refresh();
@@ -292,7 +300,7 @@ function itemModal(id) {
     else if (act === 'delitem') {
       if (!confirm('Delete this item?')) return;
       state.items = state.items.filter(i => i.id !== id);
-      state.checked = state.checked.filter(x => x !== id);
+      checked = checked.filter(x => x !== id);
       save(); closeModal(); refresh({ keepScroll: true });
     } else if (act === 'saveitem' || act === 'saveitemmore') {
       if (!saveItem(id)) return;

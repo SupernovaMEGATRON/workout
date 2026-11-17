@@ -10,17 +10,18 @@
      status?   () => { label, route } | null — something in progress, shown in the
                header from every module (one tap goes to `route`)
      footer?   true to list the module at the bottom of the menu (Settings)
-     remember? false so the app never reopens on this module
      backup?   { describe(storage) } — one-line summary of this module's data in a backup
 
    Adding a module = one file in js/modules/ + one register() line in js/app.js
    (+ the file name in sw.js).
+
+   Nothing about the last screen is kept: a launch opens Home, and choosing a module
+   opens its first tab. (A reload keeps the screen in the address.)
    ========================================================================= */
 import * as nav from './nav.js';
 import { $, esc, toast } from './ui.js';
 
-const SHELL_KEY = 'pablo_shell_v1';      // last screen used; not user data
-const DEFAULT_ROUTE = 'workout/history';
+const DEFAULT_ROUTE = 'home';
 
 const modules = [];
 const byId = id => modules.find(m => m.id === id);
@@ -28,24 +29,13 @@ const byId = id => modules.find(m => m.id === id);
 export function register(mod) { modules.push(mod); }
 export const allModules = () => modules;
 
-/* ---------- remembered screen ---------- */
 // An icon is a text symbol, or SVG markup from core/icons.js.
 const iconHTML = icon => (String(icon || '').startsWith('<svg') ? icon : esc(icon || '•'));
-
-let shellState = (() => {
-  try { return JSON.parse(localStorage.getItem(SHELL_KEY)) || {}; } catch (e) { return {}; }
-})();
-function saveShell() {
-  try { localStorage.setItem(SHELL_KEY, JSON.stringify(shellState)); } catch (e) {}
-}
 
 /* ---------- routes ---------- */
 const hasTabs = mod => !!(mod.tabs && mod.tabs.length);
 
-function defaultTab(mod) {
-  const last = shellState.lastTab && shellState.lastTab[mod.id];
-  return mod.tabs.some(t => t.id === last) ? last : mod.tabs[0].id;
-}
+const defaultTab = mod => mod.tabs[0].id;
 
 // Turn any string into a route that exists.
 export function normalise(route) {
@@ -74,10 +64,6 @@ function render(route, opts = {}) {
   const mod = byId(segs[0]);
   const tab = hasTabs(mod) ? segs[1] : null;
   const params = segs.slice(hasTabs(mod) ? 2 : 1);
-
-  if (mod.remember !== false) shellState.route = tab ? mod.id + '/' + tab : mod.id;
-  if (tab) { shellState.lastTab = shellState.lastTab || {}; shellState.lastTab[mod.id] = tab; }
-  saveShell();
 
   renderChrome(mod, tab);
 
@@ -152,8 +138,10 @@ export function startShell() {
   });
   $('#headerStatus').addEventListener('click', e => go(e.currentTarget.dataset.route));
 
-  // Reopen where the user left off (an address typed or reloaded wins).
-  const initial = normalise(nav.routeFromHash() || shellState.route || DEFAULT_ROUTE);
+  // A launch (from the home-screen icon) has no address: open Home. A reload keeps
+  // the screen it was on.
+  try { localStorage.removeItem('pablo_shell_v1'); } catch (e) {}      // left by older versions
+  const initial = normalise(nav.routeFromHash() || DEFAULT_ROUTE);
   nav.start(initial, {
     onChange: route => render(route),
     onRootBack: () => toast('Swipe back again to exit'),
