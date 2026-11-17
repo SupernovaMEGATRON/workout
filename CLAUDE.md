@@ -26,6 +26,7 @@ js/core/ui.js           $, esc, uid, toast, popup, readNumber, copyText
 js/core/backup.js       export / import of all modules' data
 js/core/dates.js        local calendar days ("YYYY-MM-DD") and date formatting
 js/core/icons.js        drawn (SVG) icons for menus and tabs
+js/core/daynav.js       header of a "one day" screen with ‹ › day stepping (Calories, Routine)
 js/modules/<name>.js    one file per module
 tools/check_files.py    release check
 ```
@@ -39,6 +40,7 @@ tools/check_files.py    release check
 - **Updates:** the service worker precaches the files listed in `sw.js` under a cache named after the version. A new version installs in the background and waits; the page shows "New version available" and switches when the user taps Update. Stored data is never involved.
 - **Dates:** a day is a local calendar day written `YYYY-MM-DD` (`js/core/dates.js`), never a UTC timestamp. When the app returns to the foreground on a new day, the current screen is redrawn (`js/app.js`).
 - **Icons:** use the drawn icons in `js/core/icons.js` for new modules; text symbols render differently from phone to phone. Workout keeps its original symbols.
+- **Routine keeps past days frozen:** every day up to yesterday is written down before any todo is edited or deleted (`freeze()` in `routine.js`), so history never changes. Any new code that changes todos must call `freeze()` first.
 - **Cross-module reads:** a module exports the functions other modules may use (for example `daySummary(day)` in `calories.js`, for Home). Data has one owner; nothing is copied.
 
 ## Look

@@ -21,4 +21,6 @@ export const icons = {
   projects: svg('<path d="M3.5 8a2 2 0 0 1 2-2h3.6l2 2.4h7.4a2 2 0 0 1 2 2V16.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2Z"/>'),
   // a ticked circle
   done: svg('<circle cx="12" cy="12" r="8.5"/><path d="M8.3 12.3l2.5 2.5 4.9-5.3"/>'),
+  // two arrows going round
+  routine: svg('<path d="M4.5 11a7.5 7.5 0 0 1 12.9-4.6L19.5 8.5"/><path d="M19.5 4v4.5H15"/><path d="M19.5 13a7.5 7.5 0 0 1-12.9 4.6L4.5 15.5"/><path d="M4.5 20v-4.5H9"/>'),
 };

@@ -15,7 +15,8 @@
 import { $, esc, uid, toast, openModal, closeModal, readNumber } from '../core/ui.js';
 import { go, refresh } from '../core/shell.js';
 import { icons } from '../core/icons.js';
-import { today, addDays, isDay, weekdayIndex, fmtDay, relDay, WEEKDAYS } from '../core/dates.js';
+import { today, isDay, weekdayIndex, fmtDay, relDay, WEEKDAYS } from '../core/dates.js';
+import { dayHeader, wireDayNav } from '../core/daynav.js';
 
 const KEY = 'pablo_calories_v1';
 const HISTORY_PAGE = 60;      // days shown at once in History
@@ -154,20 +155,8 @@ function renderDay(el, day, base) {
   const t = today(), isToday = day === t;
   const totals = dayTotals(day), goal = goalFor(day);
   const list = [...entriesOf(day)].sort((a, b) => b.at - a.at);
-  const arrow = 'w-11 h-11 rounded-xl bg-panel border border-line text-fg text-xl leading-none active:border-amber/60';
-
   el.innerHTML = `
-    <div class="flex items-center justify-between gap-2 mb-4">
-      <div class="min-w-0">
-        <div class="font-disp text-2xl font-700 leading-none truncate">${isToday ? 'Today' : esc(fmtDay(day))}</div>
-        <div class="text-xs text-mut num mt-1.5">${isToday ? esc(fmtDay(day)) : esc(relDay(day))}</div>
-      </div>
-      <div class="flex items-center gap-2 shrink-0">
-        ${isToday ? '' : '<button data-act="totoday" class="text-xs text-amber border border-amber/50 rounded-full px-3 py-2">Today</button>'}
-        <button data-act="prev" aria-label="Previous day" class="${arrow}">‹</button>
-        <button data-act="next" aria-label="Next day" class="${arrow} ${isToday ? 'opacity-25 pointer-events-none' : ''}">›</button>
-      </div>
-    </div>
+    ${dayHeader(day)}
 
     <div class="bg-panel border border-line rounded-2xl p-4 mb-3 grid grid-cols-2 gap-4">
       ${statBlock('Calories', 'ceiling', totals.kcal, goal.kcal, 'kcal')}
@@ -204,16 +193,12 @@ function renderDay(el, day, base) {
     addEntry(day, values);
     refresh({ keepScroll: true });
   };
-  const move = d => go(`${base}/${d}`, { replace: true });   // stepping days does not pile up history
-
+  wireDayNav(el, day, base);
   el.addEventListener('click', e => {
     const btn = e.target.closest('[data-act]');
     if (!btn) return;
     switch (btn.dataset.act) {
       case 'add': submit(); break;
-      case 'prev': move(addDays(day, -1)); break;
-      case 'next': if (!isToday) move(addDays(day, 1)); break;
-      case 'totoday': move(t); break;
       case 'edit': entryModal(day, btn.dataset.id); break;
     }
   });

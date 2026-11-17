@@ -31,10 +31,12 @@ const FILES = [
   'js/core/backup.js',
   'js/core/dates.js',
   'js/core/icons.js',
+  'js/core/daynav.js',
   'js/modules/home.js',
   'js/modules/workout.js',
   'js/modules/calories.js',
   'js/modules/projects.js',
+  'js/modules/routine.js',
   'js/modules/grocery.js',
   'js/modules/settings.js',
 ];
